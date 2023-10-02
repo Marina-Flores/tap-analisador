@@ -1,6 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const _ = require('lodash');
+const readline = require('readline');
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 
 function processarArquivoSRT(filePath: string): string[] {
   const data = fs.readFileSync(filePath, 'utf8');
@@ -28,7 +33,7 @@ function contarPalavras(legendas: string[]): Map<string, number> {
   for (const legenda of legendas) {
     const palavras = legenda
       .toLowerCase()
-      .replace(/[^a-zA-Z\s]/g, '') 
+      .replace(/[^a-zA-Z\s]/g, '')
       .split(/\s+/)
       .filter((palavra) => palavra !== '');
 
@@ -49,32 +54,34 @@ function gerarArquivoFrequenciaJSON(contagemPalavras: Map<string, number>, outpu
   fs.writeFileSync(outputPath, JSON.stringify(contagemOrdenada, null, 2));
 }
 
-const diretorioEntrada = '../vikings-first-season';
-const diretorioSaida = './resultados';
+rl.question('Digite o diretório de entrada: ', (diretorioEntrada: string) => {
+  const diretorioSaida = './resultados';
 
-fs.readdirSync(diretorioEntrada)
-  .filter((arquivo: string) => arquivo.endsWith('.srt'))
-  .forEach((arquivo: string) => {
-    const filePath = path.join(diretorioEntrada, arquivo);
-    const legendas = processarArquivoSRT(filePath);
-    const contagemPalavras = contarPalavras(legendas);
-    const nomeArquivoSaida = `episodio-${path.parse(arquivo).name}.json`;
-    const outputPath = path.join(diretorioSaida, nomeArquivoSaida);
+  fs.readdirSync(diretorioEntrada)
+    .filter((arquivo: string) => arquivo.endsWith('.srt'))
+    .forEach((arquivo: string) => {
+      const filePath = path.join(diretorioEntrada, arquivo);
+      const legendas = processarArquivoSRT(filePath);
+      const contagemPalavras = contarPalavras(legendas);
+      const nomeArquivoSaida = `episodio-${path.parse(arquivo).name}.json`;
+      const outputPath = path.join(diretorioSaida, nomeArquivoSaida);
 
-    gerarArquivoFrequenciaJSON(contagemPalavras, outputPath);
-  });
+      gerarArquivoFrequenciaJSON(contagemPalavras, outputPath);
+    });
 
-const contagemTodasPalavras = new Map<string, number>();
-fs.readdirSync(diretorioSaida)
-  .filter((arquivo: string) => arquivo.endsWith('.json'))
-  .forEach((arquivo: string) => {
-    const filePath = path.join(diretorioSaida, arquivo);
-    const contagemPalavras = JSON.parse(fs.readFileSync(filePath, 'utf8')) as { palavra: string; frequencia: number }[];
-    
-    for (const { palavra, frequencia } of contagemPalavras) {
-      const contagem = contagemTodasPalavras.get(palavra) || 0;
-      contagemTodasPalavras.set(palavra, contagem + frequencia);
-    }
-  });
+  const contagemTodasPalavras = new Map<string, number>();
+  fs.readdirSync(diretorioSaida)
+    .filter((arquivo: string) => arquivo.endsWith('.json'))
+    .forEach((arquivo: string) => {
+      const filePath = path.join(diretorioSaida, arquivo);
+      const contagemPalavras = JSON.parse(fs.readFileSync(filePath, 'utf8')) as { palavra: string; frequencia: number }[];
 
-gerarArquivoFrequenciaJSON(contagemTodasPalavras, path.join(diretorioSaida, `temporada-${path.basename(diretorioEntrada)}.json`));
+      for (const { palavra, frequencia } of contagemPalavras) {
+        const contagem = contagemTodasPalavras.get(palavra) || 0;
+        contagemTodasPalavras.set(palavra, contagem + frequencia);
+      }
+    });
+
+  gerarArquivoFrequenciaJSON(contagemTodasPalavras, path.join(diretorioSaida, `temporada-${path.basename(diretorioEntrada)}.json`));
+  rl.close();
+});
